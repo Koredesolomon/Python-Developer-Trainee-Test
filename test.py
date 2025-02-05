@@ -84,7 +84,6 @@ def iterative_search(arr, target):
 
 # Step 7: Generate a fixed random 4-bit binary number and convert to base 10
 def generate_binary():
-    random.seed(42)  # Fixed seed for reproducibility
     binary_number = "".join(str(random.randint(0, 1)) for _ in range(4))
     base10_number = int(binary_number, 2)
     return binary_number, base10_number
@@ -100,7 +99,6 @@ def fibonacci_sum(n):
 
 # Main function
 def main():
-    random.seed(42)  # Ensure consistent randomness throughout
     file_id = "1nf9WMDjZWIUnlnKyz7qomEYDdtWfW1Uf"  # Google Drive file ID
 
     colors = fetch_and_parse_colors(file_id)  # Get color data
