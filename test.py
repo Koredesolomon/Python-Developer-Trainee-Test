@@ -1,9 +1,9 @@
 from bs4 import BeautifulSoup
 import statistics
+import numpy as np
 from collections import Counter
 import random
 import requests
-import pandas as pd
 
 # Step 1: Get the file from Google Drive using the file ID
 def get_google_drive_file(file_id):
@@ -18,108 +18,105 @@ def get_google_drive_file(file_id):
 # Step 2: Fetch the colors data from the file
 def fetch_and_parse_colors(file_id):
     try:
-        # Get the file content and parse it using BeautifulSoup
         file_content = get_google_drive_file(file_id)
         soup = BeautifulSoup(file_content, 'html.parser')
-        
-        rows = soup.find_all("tr")  # Find all the rows in the table
+
+        rows = soup.find_all("tr")  # Find all table rows
         colors = []
 
-        # Go through each row and get color data
         for row in rows:
-            td_elements = row.find_all("td")  # Find all the columns in this row
+            td_elements = row.find_all("td")  # Get table columns
             
-            if len(td_elements) > 1:  # Only proceed if there's more than 1 column
+            if len(td_elements) > 1:  # Ensure there are at least two columns
                 try:
-                    color_text = td_elements[1].text.strip()  # Get the second column text (color info)
+                    color_text = td_elements[1].text.strip()  # Get second column (color)
                     if color_text:
-                        colors.extend([color.strip() for color in color_text.split(",")])  # Add the colors to the list
+                        colors.extend([color.strip() for color in color_text.split(",")])  # Split by commas
                 except IndexError:
-                    continue  # Skip if something is wrong with this row
-        return colors
+                    continue  # Skip faulty rows
+
+        return sorted(colors)  # Always return a sorted list for consistency
     except Exception as e:
         print(f"Error fetching data: {e}")
         return []  # Return an empty list if anything goes wrong
 
-# Step 3: Calculate some statistics (Mean, Mode, Median, Variance)
+# Step 3: Compute statistics (Mean, Mode, Median, Variance)
 def compute_statistics(colors):
-    color_counts = Counter(colors)  # Count how many times each color appears
-    most_common_color = color_counts.most_common(1)[0][0] if color_counts else None  # Find the most common color
+    color_counts = Counter(colors)  # Count color frequencies
+    most_common_color = color_counts.most_common(1)[0][0] if color_counts else None  # Most frequent color
 
-    color_mapping = {color: i+1 for i, color in enumerate(set(colors))}  # Map each color to a number
-    color_values = [color_mapping[color] for color in colors] if colors else []  # Get the numeric values for the colors
+    # Map colors to numbers consistently
+    unique_colors = sorted(set(colors))  # Ensure deterministic order
+    color_mapping = {color: i+1 for i, color in enumerate(unique_colors)}
+    color_values = np.array([color_mapping[color] for color in colors]) if colors else np.array([])
 
-    mean_color = statistics.mean(color_values) if color_values else None  # Calculate the mean (average) color
-    median_color = statistics.median(color_values) if color_values else None  # Calculate the median color
-    variance = statistics.variance(color_values) if len(color_values) > 1 else None  # Calculate the variance
+    mean_color = np.mean(color_values) if color_values.size else None
+    median_color = np.median(color_values) if color_values.size else None
+    variance = np.var(color_values, ddof=1) if color_values.size > 1 else None  # Sample variance
 
-    # Reverse the numeric values back to color names for mean and median
+    # Map numeric mean/median back to colors
     mean_color_name = min(color_mapping, key=lambda k: abs(color_mapping[k] - mean_color)) if mean_color else None
     median_color_name = min(color_mapping, key=lambda k: abs(color_mapping[k] - median_color)) if median_color else None
 
     return most_common_color, mean_color_name, median_color_name, variance
 
-# Step 4: Calculate the probability of 'Red' showing up in the data
+# Step 4: Calculate the probability of 'Red'
 def calculate_red_probability(colors):
     color_counts = Counter(colors)
-    return color_counts.get("Red", 0) / len(colors) if colors else 0  # If there's no data, return 0
+    return color_counts.get("RED", 0) / len(colors) if colors else 0  # Avoid division by zero
 
-# Step 5: Store the frequency of each color in a dictionary
+# Step 5: Store color frequencies in a dictionary
 def store_in_dict(colors):
-    color_counts = Counter(colors)  # Count the frequency of each color
-    return dict(color_counts)  # Convert the counter to a dictionary
+    return dict(Counter(colors))  # Convert frequency count to dictionary
 
-# Step 6: Simple binary search algorithm
+# Step 6: Iterative binary search
 def iterative_search(arr, target):
-    low, high = 0, len(arr) - 1  # Set the starting and ending points for the search
+    low, high = 0, len(arr) - 1  # Search range
     while low <= high:
-        mid = (low + high) // 2  # Find the middle index
+        mid = (low + high) // 2
         if arr[mid] == target:
-            return mid  # If found, return the index
+            return mid  # Found it!
         elif arr[mid] > target:
-            high = mid - 1  # Look in the left half
+            high = mid - 1  # Search left
         else:
-            low = mid + 1  # Look in the right half
-    return -1  # Return -1 if the target isn't found
+            low = mid + 1  # Search right
+    return -1  # Not found
 
-# Step 7: Generate a random 4-bit binary number and convert it to base 10
+# Step 7: Generate a fixed random 4-bit binary number and convert to base 10
 def generate_binary():
-    binary_number = "".join(str(random.randint(0, 1)) for _ in range(4))  # Randomly generate a 4-bit binary number
-    base10_number = int(binary_number, 2)  # Convert the binary number to base 10
+    random.seed(42)  # Fixed seed for reproducibility
+    binary_number = "".join(str(random.randint(0, 1)) for _ in range(4))
+    base10_number = int(binary_number, 2)
     return binary_number, base10_number
 
-# Step 8: Calculate the sum of the first 50 Fibonacci numbers
+# Step 8: Sum of first 50 Fibonacci numbers
 def fibonacci_sum(n):
-    a, b = 0, 1  # Starting values for Fibonacci numbers
-    total = 0  # The sum of the Fibonacci numbers
+    a, b = 0, 1
+    total = 0
     for _ in range(n):
-        total += a  # Add the current Fibonacci number to the total
-        a, b = b, a + b  # Move to the next Fibonacci numbers
+        total += a
+        a, b = b, a + b
     return total
 
-# Main function that ties everything together
+# Main function
 def main():
-    random.seed(42)  # Set the seed for randomness, so it's always the same each time we run
-    file_id = "1nf9WMDjZWIUnlnKyz7qomEYDdtWfW1Uf"  # The ID of the Google Drive file
-    
-    colors = fetch_and_parse_colors(file_id)  # Get and parse the color data from the file
-    colors.sort()  # Sort the colors so that order doesn't change on different runs
+    random.seed(42)  # Ensure consistent randomness throughout
+    file_id = "1nf9WMDjZWIUnlnKyz7qomEYDdtWfW1Uf"  # Google Drive file ID
 
-    most_common_color, mean_color_name, median_color_name, variance = compute_statistics(colors)  # Calculate stats
+    colors = fetch_and_parse_colors(file_id)  # Get color data
+    most_common_color, mean_color_name, median_color_name, variance = compute_statistics(colors)
 
-    prob_red = calculate_red_probability(colors)  # Calculate the probability of 'Red'
+    prob_red = calculate_red_probability(colors)  # Probability of 'Red'
+    color_frequencies = store_in_dict(colors)  # Color frequencies dictionary
 
-    color_frequencies = store_in_dict(colors)  # Store color frequencies in a dictionary
+    sorted_colors = sorted(colors)  # Sort for binary search consistency
+    target_color = "BLUE"
+    search_result = iterative_search(sorted_colors, target_color)
 
-    sorted_colors = sorted(colors)  # Sort the colors for binary search
-    target_color = "Blue"  # We're searching for 'Blue'
-    search_result = iterative_search(sorted_colors, target_color)  # Perform binary search
+    binary_number, base10_number = generate_binary()  # Fixed binary number
+    fib_sum = fibonacci_sum(50)  # First 50 Fibonacci sum
 
-    binary_number, base10_number = generate_binary()  # Generate a random binary number and convert to base 10
-
-    fib_sum = fibonacci_sum(50)  # Get the sum of the first 50 Fibonacci numbers
-
-    # Print the results
+    # Print results
     print(f"Mean Color: {mean_color_name}")
     print(f"Most Worn Color: {most_common_color}")
     print(f"Median Color: {median_color_name}")
@@ -130,6 +127,6 @@ def main():
     print(f"Search Result for '{target_color}': {search_result if search_result != -1 else 'Not Found'}")
     print(f"Color Frequencies: {color_frequencies}")
 
-# If this is the main file, run the main function
+# Run program
 if __name__ == "__main__":
     main()
